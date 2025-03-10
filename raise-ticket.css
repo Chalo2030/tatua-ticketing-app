@@ -1,0 +1,286 @@
+/* General Page Styling */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    margin: 0;
+    padding: 20px;
+    background-color: white;
+}
+
+/* Navbar */
+nav {
+    background: #2c1050;
+    display: flex;
+    align-items: center;
+    padding: 10px 20px;
+}
+
+nav .logo {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    color: white;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+nav .logo img {
+    margin-right: 10px;
+}
+
+.nav-links {
+    list-style: none;
+    display: flex;
+    margin-right: auto;
+}
+
+.nav-links li {
+    margin: 0 15px;
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: white;
+    font-size: 16px;
+}
+
+
+
+.statement{
+    text-align: left;
+    margin: 20px;
+    font-size: 18px;
+}
+
+.form-container{
+    width: 50%;
+    /* margin: 0 auto; */
+    margin: 20px;
+    background-color: #f4f4f4;
+    padding: 20px;
+    border-radius: 20px;
+    border-radius: 8px;
+    /* box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1); */
+}
+
+.form-group{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.form-group label{
+    align-items: center;
+    width: 30%;
+    font-weight: bold;
+}
+.form-group.checkbox-group{
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    
+}
+
+.form-group.checkbox-group label a{
+    text-decoration: none;
+}
+.form-group.checkbox-group label a:hover{
+    text-decoration: underline;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea{
+    width: 65%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    margin: 5px;
+}
+
+.form-group textarea{
+    width: 65%;
+    resize: vertical;
+}
+
+.radio-group{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.radio-group label{
+    width: auto;
+    font-weight: lighter;
+}
+.form-group.checkbox-group input[type="checkbox"]{
+    width: auto;
+    margin: 0;
+}
+/* ------------------------------------------------------ Styling checkbox*/
+
+/* Hide the default checkbox */
+input[type="checkbox"] {
+    display: none;
+}
+
+/* Create a custom checkbox */
+.custom-checkbox {
+    position: relative;
+    padding-left: 30px;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+}
+
+/* The custom box */
+.custom-checkbox::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 2px;
+    width: 15px;
+    height: 15px;
+    border: 2px solid #ccc;
+    border-radius: 4px;
+    background-color: white;
+}
+
+input[type="checkbox"]:checked + .custom-checkbox::before {
+    background-color: purple;
+    border-color: purple;
+}
+
+/* Add checkmark when checked */
+input[type="checkbox"]:checked + .custom-checkbox::after {
+    content: "✔";
+    position: absolute;
+    left: 5px;
+    top: 2px;
+    font-size: 16px;
+    color: white;
+    font-weight: bold;
+}
+
+/* --------------------------------------------------------------- */
+.form-group.checkbox-group label{
+    white-space: nowrap;
+    margin: 10px 10px;
+}
+button#submitButton{
+    width: 100%;
+    padding: 10px;
+    /* background-color: #28a745; */
+    background-color: purple;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+}
+button#submitButton:hover{
+    background-color: #218838;
+}
+
+
+/* label{
+    font-weight: bold;
+    width: 150px;
+    text-align: right;
+}
+
+input[type="text"],
+textarea,
+select,
+input[type="file"]{
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 16px;
+}
+textarea{
+    height: 100px;
+    resize: none;
+}
+
+.radio-group{
+    display: flex;
+    align-items: center;
+    gap: 15px;
+
+}
+input[type="radio"]{
+    margin-right: 1px;
+}
+
+button {
+    background-color: #007BFF;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    width: 100%;
+}
+
+p a {
+    color: #007BFF;
+    text-decoration: none;
+}
+
+p a:hover {
+    text-decoration: underline;
+} */
+
+
+
+
+
+
+
+
+
+/* .submission-form {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 1);
+    max-width: 500px;
+    margin: 20px auto;
+    max-height: 500px;
+}
+input{
+    margin: 10px;
+    width: 90%;
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+label{
+    font-style: initial;
+}
+
+button {
+    background-color: #007bff;
+    color: white;
+    cursor: pointer;
+    border: none;
+    font-size: 16px;
+    width: 90%;
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+button:hover{
+    background-color: #0056b3;
+
+}
+ */

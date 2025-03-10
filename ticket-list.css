@@ -1,0 +1,148 @@
+/* General Page Styling */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    margin: 0;
+    padding: 20px;
+}
+
+/* Navbar */
+nav {
+    background: #2c1050;
+    display: flex;
+    align-items: center;
+    padding: 10px 20px;
+}
+
+nav .logo {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    color: white;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+nav .logo img {
+    margin-right: 10px;
+}
+
+.nav-links {
+    list-style: none;
+    display: flex;
+    margin-right: auto;
+}
+
+.nav-links li {
+    margin: 0 15px;
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: white;
+    font-size: 16px;
+}
+
+
+
+.container {
+    width: 90%;
+    /* max-width: 1000px; */
+    margin: auto;
+    /* background: #ffffff; */
+    background: none;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Table Styling */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+
+th, td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+th {
+    /* background-color: #2c1050; */
+    color: purple;
+    text-transform: uppercase;
+}
+
+/* Button Styling */
+td button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    margin: 5px;
+    padding: 5px;
+}
+
+/* Icons inside buttons */
+td button img {
+    width: 20px;
+    height: 20px;
+    transition: transform 0.2s ease-in-out;
+}
+
+/* Hover effect */
+td button:hover img {
+    transform: scale(1.2);
+}
+
+/* Row alternating colors */
+tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+/* Row hover effect */
+tr:hover {
+    background-color: #f1f1f1;
+}
+
+/* Refresh button */
+.refresh {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 10px;
+}
+
+.refresh button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+
+}
+
+.refresh img {
+    width: 24px;
+    height: 24px;
+    margin-right: 8px;
+}
+
+/* Tooltip Styling */
+button {
+    position: relative;
+}
+
+button:hover::after {
+    content: attr(title);
+    position: absolute;
+    background: #333;
+    color: #fff;
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+}
