@@ -1,40 +1,88 @@
 // Load existing submissions from localStorage or initialize an empty array
 let formSubmissions = JSON.parse(localStorage.getItem("formSubmissions")) || [];
 
-// Function to get the next incremental ID
-function getNextId() {
-    if (formSubmissions.length === 0) {
-        return 1; // Start from 1 if no entries exist
-    }
-    return formSubmissions[formSubmissions.length - 1].id + 1; // Increment last ID
+// Hide phone 
+const phone_input = document.getElementById("phone-label");
+const email_input = document.getElementById("email-label");
+
+const phone_btn = document.getElementById("phone_button");
+const email_button = document.getElementById("email_button");
+
+if (email_button.checked) {
+    email_input.style.display = "block";
+    phone_input.style.display = "none";
 }
 
-// Function to store form data in localStorage
-function storeFormData(fullName, email, phone, message, subject, fileName) {
+phone_btn.addEventListener("click", () => {
+    phone_input.style.display = "flex";
+    email_input.style.width = "100%";
+    email_input.style.display = "none";
+});
+
+email_button.addEventListener("click", () => {
+    email_input.style.display = "flex";
+    email_input.style.width = "100%";
+    phone_input.style.display = "none";
+});
+
+const fileInput = document.getElementById("attachmentfile");
+const removeFileButton = document.getElementById("removeFileButton");
+
+// Show remove button when a file is selected
+fileInput.addEventListener("change", function () {
+    if (fileInput.files.length > 0) {
+        removeFileButton.style.display = "inline-block";
+    } else {
+        removeFileButton.style.display = "none";
+    }
+});
+
+// Remove file when the button is clicked
+removeFileButton.addEventListener("click", function () {
+    fileInput.value = ""; // Clear the file input
+    removeFileButton.style.display = "none"; // Hide the remove button
+});
+
+function generateUniqueId() {
+    return Date.now(); // Generates a timestamp-based ID
+}
+
+// Function to store form data in localStorage and reset the form
+function storeFormData(fullName, email, phone, message, subject, fileBase64, fileName) {
     let formData = { 
-        id: getNextId(), // Get next sequential ID
+        id: generateUniqueId(),
         name: fullName, 
-        contact: `${email} | ${phone}`, 
+        contact: `${email} ${phone}`, 
         details: message,
         date: new Date().toLocaleString(),
         subject,
-        fileName
+        file: fileBase64 ? {
+            name: fileName,
+            data: fileBase64
+        } : null
     };
 
     formSubmissions.push(formData); 
     localStorage.setItem("formSubmissions", JSON.stringify(formSubmissions)); 
 
     alert("Form submitted successfully. Data saved in local storage."); 
-
     console.log("Data stored:", formSubmissions); 
 
-    renderTickets(); 
+    // Reset the form after storing data
+    const form = document.getElementById("dataForm");
+    form.reset();
+
+    // Reset UI elements
+    email_input.style.display = "block";
+    phone_input.style.display = "none";
+    removeFileButton.style.display = "none";
 }
 
 // Attach event listener to submit button
 document.getElementById("submitButton").addEventListener("click", function (event) {
     event.preventDefault(); 
 
+    let form = document.getElementById("dataForm");
     let fullName = document.getElementById("full-name").value.trim();
     let email = document.getElementById("email-address").value.trim();
     let phone = document.getElementById("phone-number").value.trim();
@@ -53,15 +101,23 @@ document.getElementById("submitButton").addEventListener("click", function (even
         alert("Full Name required");
         return;
     }
-    if (!validateEmail(email)) {
-        alert("Please enter a valid email address");
-        return;
+
+    if (document.getElementById('email_button').checked) {
+        if (!validateEmail(email)) {
+            alert("Please enter a valid email address");
+            return;
+        }
     }
-    if (!/^\d{10}$/.test(phone)) {
-        alert("Please enter a valid 10-digit phone number");
-        return;
+
+    if (document.getElementById('phone_button').checked) {
+        let phoneRegex = /^\d{10}$/;
+        if (phone && !phoneRegex.test(phone)) {
+            alert("Phone number must be exactly 10 digits");
+            return;
+        }
     }
-    if (message === "") {
+
+    if (!message) {
         alert("Message cannot be empty");
         return;
     }
@@ -69,91 +125,31 @@ document.getElementById("submitButton").addEventListener("click", function (even
         alert("You must agree to the terms and conditions");
         return;
     }
-    if (!file) {
-        alert("Please attach a file before submitting");
-        return;
-    }
 
-    let allowedExtensions = /(\.pdf|\.docx)$/i;
-    if (!allowedExtensions.test(file.name)) {
-        alert("Only PDF and DOCX files are allowed");
-        return;
-    }
+    if (file) {
+        let allowedExtensions = /(\.pdf|\.png|\.jpg|\.jpeg)$/i;
+        if (!allowedExtensions.test(file.name)) {
+            alert("Only {PDF, PNG, JPG, JPEG} files are allowed");
+            return;
+        }
 
-    storeFormData(fullName, email, phone, message, subject, file.name);
+        let reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = function () {
+            let fileBase64 = reader.result;
+            let fileName = file.name;
+            storeFormData(fullName, email, phone, message, subject, fileBase64, fileName);
+        };
+        reader.onerror = function () {
+            alert("Error reading the file. Please try again.");
+        };
+    } else {
+        storeFormData(fullName, email, phone, message, subject, null, null);
+    }
 });
 
 // Validate email function
 function validateEmail(email) {
     let emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
-}
-
-// Load stored tickets on page load
-document.addEventListener("DOMContentLoaded", () => {
-    renderTickets();
-});
-
-// Load tickets from localStorage
-function loadTickets() {
-    const storedTickets = localStorage.getItem("formSubmissions");
-    return storedTickets ? JSON.parse(storedTickets) : [];
-}
-
-// Save tickets to localStorage
-function saveTickets(tickets) {
-    localStorage.setItem("formSubmissions", JSON.stringify(tickets));
-}
-
-// Render tickets in the table
-function renderTickets() {
-    const tickets = loadTickets();
-    const tableBody = document.getElementById("ticketTableBody");
-    tableBody.innerHTML = "";
-
-    tickets.forEach(ticket => {
-        const row = document.createElement("tr");
-
-        row.innerHTML = `
-            <td>${ticket.id}</td>
-            <td>${ticket.name} <br> ${ticket.contact}</td>
-            <td>${ticket.details}</td>
-            <td>${ticket.date}</td>
-            <td>
-                <button onclick="alert('More Info: ${ticket.details}')">
-                    <img src="projectIcons/info.png" alt="More Info" title="More Info">
-                </button>
-                <button onclick="downloadAttachment('${ticket.fileName}')">
-                    <img src="projectIcons/application.png" alt="Download" title="Download Attachment">
-                </button>
-                <button onclick="alert('Calling ${ticket.contact}')">
-                    <img src="projectIcons/call.png" alt="Call" title="Call">
-                </button>
-                <button onclick="alert('Emailing ${ticket.contact}')">
-                    <img src="projectIcons/email.png" alt="Email" title="Email">
-                </button>
-                <button onclick="alert('Editing ticket ${ticket.id}')">
-                    <img src="projectIcons/edit.png" alt="Edit" title="Edit Ticket">
-                </button>
-                <button onclick="deleteTicket(${ticket.id})">
-                    <img src="projectIcons/delete.png" alt="Delete" title="Delete Ticket">
-                </button>
-            </td>
-        `;
-
-        tableBody.appendChild(row);
-    });
-}
-
-// Simulated download function for attachment
-function downloadAttachment(fileName) {
-    alert(`Downloading file: ${fileName}`);
-}
-
-// Delete a ticket
-function deleteTicket(id) {
-    let tickets = loadTickets();
-    tickets = tickets.filter(ticket => ticket.id !== id);
-    saveTickets(tickets);
-    renderTickets();
 }

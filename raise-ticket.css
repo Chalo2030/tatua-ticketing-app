@@ -72,9 +72,10 @@ nav .logo img {
 
 .form-group label{
     align-items: center;
-    width: 30%;
+    max-width: 30%;
     font-weight: bold;
 }
+
 .form-group.checkbox-group{
     display: flex;
     align-items: center;
@@ -87,6 +88,7 @@ nav .logo img {
 .form-group.checkbox-group label a{
     text-decoration: none;
 }
+
 .form-group.checkbox-group label a:hover{
     text-decoration: underline;
 }
@@ -100,6 +102,7 @@ nav .logo img {
     border-radius: 5px;
     margin: 5px;
 }
+
 
 .form-group textarea{
     width: 65%;
@@ -184,6 +187,8 @@ button#submitButton{
 button#submitButton:hover{
     background-color: #218838;
 }
+
+
 
 
 /* label{

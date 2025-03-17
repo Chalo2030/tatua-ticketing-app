@@ -1,370 +1,6 @@
 // Global variable to store filtered tickets
 let filteredTickets = null;
 
-// Pagination variables
-let currentPage = 1;
-const ticketsPerPage = 3;
-
-// Global variable for editing
-let currentEditingTicketId = null;
-
-// Global functions (outside DOMContentLoaded for accessibility)
-function loadTickets() {
-    const storedTickets = localStorage.getItem("formSubmissions");
-    const tickets = storedTickets ? JSON.parse(storedTickets) : [];
-    console.log("Raw loaded tickets:", tickets);
-    return tickets;
-}
-
-function saveTickets(tickets) {
-    localStorage.setItem("formSubmissions", JSON.stringify(tickets));
-    console.log("Tickets saved to localStorage:", tickets);
-}
-
-function extractEmail(contact) {
-    if (!contact) return '';
-    const emailMatch = contact.match(/^([^\s@]+@[^\s@]+\.[^\s@]+)/);
-    return emailMatch ? emailMatch[0] : '';
-}
-
-function extractPhone(contact) {
-    if (!contact) return '';
-    const phoneMatch = contact.match(/\d{10}$/);
-    return phoneMatch ? phoneMatch[0] : '';
-}
-
-function determineContactType(contact) {
-    const email = extractEmail(contact);
-    const phone = extractPhone(contact);
-    if (email && !phone) {
-        return { type: 'email', value: email };
-    } else if (phone && !email) {
-        return { type: 'phone', value: phone };
-    } else {
-        console.warn("Invalid or ambiguous contact format:", contact);
-        return { type: 'none', value: '' };
-    }
-}
-
-// Convert file to data URL
-function fileToDataURL(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (event) => resolve(event.target.result);
-        reader.onerror = (error) => reject(error);
-        reader.readAsDataURL(file);
-    });
-}
-
-// Functions attached to window for global access
-window.showTicketInfo = function (ticketId) {
-    try {
-        const tickets = loadTickets();
-        const ticket = tickets.find(t => t.id === ticketId);
-        if (!ticket) {
-            alert("Ticket not found.");
-            return;
-        }
-        const ticketInfo = document.getElementById("ticketInfo");
-        if (ticketInfo) {
-            ticketInfo.innerHTML = `
-                <strong>Ticket ID:</strong> ${ticket.id || 'N/A'}<br>
-                <strong>Name:</strong> ${ticket.name || 'N/A'}<br>
-                <strong>Contact:</strong> ${ticket.contact || 'N/A'}<br>
-                <strong>Subject:</strong> ${ticket.subject || 'N/A'}<br>
-                <strong>Details:</strong> ${ticket.details || 'N/A'}<br>
-                <strong>Date:</strong> ${ticket.date || 'N/A'}
-            `;
-        }
-        const ticketImage = document.getElementById("ticketImage");
-        if (ticketImage) {
-            if (ticket.file && ticket.file.data) {
-                ticketImage.src = ticket.file.data;
-                ticketImage.style.display = "block";
-            } else {
-                ticketImage.style.display = "none";
-            }
-        }
-        const ticketModal = document.getElementById("ticketModal");
-        if (ticketModal) {
-            ticketModal.style.display = "block";
-            showOverlay();
-        }
-    } catch (error) {
-        console.error("Error in showTicketInfo:", error);
-    }
-};
-
-window.closeModal = function () {
-    const ticketModal = document.getElementById("ticketModal");
-    if (ticketModal) ticketModal.style.display = "none";
-    hideOverlay();
-};
-
-window.downloadAttachment = function (ticketId) {
-    try {
-        const tickets = loadTickets();
-        const ticket = tickets.find(t => t.id === ticketId);
-        if (!ticket || !ticket.file) {
-            alert("No attachment found");
-            return;
-        }
-        const link = document.createElement("a");
-        link.href = ticket.file.data;
-        link.download = ticket.file.name || `attachment_${ticketId}`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    } catch (error) {
-        console.error("Error in downloadAttachment:", error);
-    }
-};
-
-window.deleteTicket = function (id) {
-    try {
-        let tickets = loadTickets();
-        tickets = tickets.filter(ticket => ticket.id !== id);
-        saveTickets(tickets);
-        filteredTickets = null;
-        renderTickets();
-    } catch (error) {
-        console.error("Error in deleteTicket:", error);
-    }
-};
-
-window.openEditModal = function (ticketId) {
-    try {
-        const tickets = loadTickets();
-        const ticket = tickets.find(t => t.id === ticketId);
-        if (!ticket) {
-            alert("Ticket not found.");
-            return;
-        }
-        const editName = document.getElementById("editName");
-        const editContact = document.getElementById("editContact");
-        const editSubject = document.getElementById("editSubject");
-        const editDetails = document.getElementById("editDetails");
-        const editFile = document.getElementById("editFile");
-        if (editName) editName.value = ticket.name || '';
-        if (editContact) editContact.value = ticket.contact || '';
-        if (editSubject) editSubject.value = ticket.subject || '';
-        if (editDetails) editDetails.value = ticket.details || '';
-        if (editFile) {
-            // Clear the file input to allow re-uploading the same file
-            editFile.value = '';
-            // Optionally display the current file name (for user reference)
-            editFile.nextElementSibling.textContent = ticket.file ? `Current file: ${ticket.file.name || 'Unnamed'}` : 'No file attached';
-        }
-        currentEditingTicketId = ticketId;
-        const editModal = document.getElementById("editTicketModal");
-        if (editModal) {
-            editModal.style.display = "block";
-            showOverlay();
-        } else console.error("editTicketModal not found");
-    } catch (error) {
-        console.error("Error in openEditModal:", error);
-    }
-};
-
-window.saveEditedTicket = async function () {
-    try {
-        if (currentEditingTicketId === null) return;
-        let tickets = loadTickets();
-        let ticket = tickets.find(t => t.id === currentEditingTicketId);
-        if (!ticket) return;
-
-        const newName = document.getElementById("editName").value.trim();
-        const newContact = document.getElementById("editContact").value.trim();
-        const newSubject = document.getElementById("editSubject").value;
-        const newDetails = document.getElementById("editDetails").value.trim();
-        const editFile = document.getElementById("editFile");
-
-        // Update text fields
-        if (newName !== ticket.name) ticket.name = newName;
-        if (newContact !== ticket.contact) ticket.contact = newContact;
-        if (newSubject !== ticket.subject) ticket.subject = newSubject;
-        if (newDetails !== ticket.details) ticket.details = newDetails;
-
-        // Handle file update
-        if (editFile && editFile.files.length > 0) {
-            const file = editFile.files[0];
-            try {
-                const dataURL = await fileToDataURL(file);
-                ticket.file = {
-                    data: dataURL,
-                    name: file.name
-                };
-                console.log("New file uploaded:", ticket.file);
-            } catch (error) {
-                console.error("Error converting file to data URL:", error);
-                alert("Error processing the uploaded file. Keeping the existing file.");
-                return;
-            }
-        } else if (!ticket.file) {
-            ticket.file = null; // Explicitly set to null if no file and no previous file
-        }
-
-        saveTickets(tickets);
-        filteredTickets = null;
-        renderTickets();
-        window.closeEditModal();
-    } catch (error) {
-        console.error("Error in saveEditedTicket:", error);
-        alert("An error occurred while saving the ticket.");
-    }
-};
-
-window.closeEditModal = function () {
-    const editModal = document.getElementById("editTicketModal");
-    if (editModal) editModal.style.display = "none";
-    currentEditingTicketId = null;
-    hideOverlay();
-};
-
-window.initiateCall = function (phoneNumber) {
-    if (phoneNumber && window.location.protocol !== 'tel:' && !navigator.userAgent.match(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i)) {
-        alert(`No call application available on this device. Phone number: ${phoneNumber || 'Not found'}`);
-        return;
-    }
-    window.location.href = `tel:${phoneNumber || ''}`;
-};
-
-window.initiateEmail = function (email) {
-    if (email) {
-        window.location.href = `mailto:${email}`;
-    } else {
-        alert("No email available for this contact.");
-    }
-};
-
-function renderTickets() {
-    try {
-        const tickets = filteredTickets !== null ? filteredTickets : loadTickets();
-        console.log("Rendering tickets:", tickets);
-        const tableBody = document.getElementById("ticketTableBody");
-        if (!tableBody) {
-            console.error("ticketTableBody not found");
-            return;
-        }
-        tableBody.innerHTML = "";
-
-        if (tickets.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center;">${filteredTickets !== null ? "No matching tickets found" : "No tickets available"}</td></tr>`;
-            const paginationDiv = document.getElementById("pagination");
-            if (paginationDiv) paginationDiv.style.display = 'none';
-            return;
-        }
-
-        const paginationDiv = document.getElementById("pagination");
-        if (paginationDiv) {
-            if (tickets.length > ticketsPerPage) {
-                paginationDiv.style.display = 'flex';
-            } else {
-                paginationDiv.style.display = 'none';
-            }
-        }
-
-        const start = (currentPage - 1) * ticketsPerPage;
-        const end = start + ticketsPerPage;
-        const paginatedTickets = tickets.slice(start, end);
-
-        paginatedTickets.forEach(ticket => {
-            const contactInfo = determineContactType(ticket.contact);
-            const phoneAction = contactInfo.type === 'phone' 
-                ? `initiateCall('${contactInfo.value}')` 
-                : `alert('Only email is available for this contact: ${contactInfo.value}')`;
-            const emailAction = contactInfo.type === 'email' 
-                ? `initiateEmail('${contactInfo.value}')` 
-                : `alert('Only phone number is available for this contact: ${contactInfo.value}')`;
-            const phoneDisabled = contactInfo.type !== 'phone' ? 'disabled' : '';
-            const emailDisabled = contactInfo.type !== 'email' ? 'disabled' : '';
-
-            const row = document.createElement("tr");
-            row.innerHTML = `
-                <td>${ticket.id || 'N/A'}</td>
-                <td>${(ticket.name || 'N/A') + '<br>' + (ticket.contact || 'N/A')}</td>
-                <td>${(ticket.subject || 'N/A') + '<br>' + (ticket.details || 'N/A')}</td>
-                <td>${ticket.date || 'N/A'}</td>
-                <td>
-                    <button title="Show popup with more information" onclick="showTicketInfo(${ticket.id || 0})">
-                        <img src="projectIcons/information.png" alt="More Info" width="24" height="24">
-                    </button>
-                    <button title="Download ticket attachment" onclick="downloadAttachment(${ticket.id || 0})">
-                        <img src="projectIcons/download.png" alt="Download" width="16" height="16">
-                    </button>
-                    <button title="Trigger call if preferred contact is phone" onclick="${phoneAction}" ${phoneDisabled}>
-                        <img src="projectIcons/phone.png" alt="Call" width="16" height="16">
-                    </button>
-                    <button title="Trigger email if preferred contact is email" onclick="${emailAction}" ${emailDisabled}>
-                        <img src="projectIcons/email.png" alt="Email" width="16" height="16">
-                    </button>
-                    <button title="Edit on a pop-up the details of the ticket" onclick="openEditModal(${ticket.id || 0})">
-                        <img src="projectIcons/edit.png" alt="Edit" width="16" height="16">
-                    </button>
-                    <button title="Delete the ticket" onclick="deleteTicket(${ticket.id || 0})">
-                        <img src="projectIcons/trash-can.png" alt="Delete" width="16" height="16">
-                    </button>
-                </td>`;
-            tableBody.appendChild(row);
-        });
-        renderPagination();
-    } catch (error) {
-        console.error("Error in renderTickets:", error);
-    }
-}
-
-function renderPagination() {
-    try {
-        const tickets = filteredTickets !== null ? filteredTickets : loadTickets();
-        const paginationDiv = document.getElementById("pagination");
-        if (!paginationDiv) {
-            console.error("pagination div not found");
-            return;
-        }
-        paginationDiv.innerHTML = "";
-
-        const totalPages = Math.ceil(tickets.length / ticketsPerPage);
-        if (totalPages <= 1) {
-            paginationDiv.style.display = 'none';
-            return;
-        }
-
-        const prevButton = document.createElement("a");
-        prevButton.href = "#";
-        prevButton.innerText = "Previous";
-        prevButton.onclick = () => changePage(currentPage - 1);
-        prevButton.style.display = currentPage === 1 ? "none" : "inline";
-        paginationDiv.appendChild(prevButton);
-
-        for (let i = 1; i <= totalPages; i++) {
-            const pageLink = document.createElement("a");
-            pageLink.href = "#";
-            pageLink.innerText = i;
-            pageLink.classList.add("page-link");
-            if (i === currentPage) pageLink.classList.add("active");
-            pageLink.onclick = () => changePage(i);
-            paginationDiv.appendChild(pageLink);
-        }
-
-        const nextButton = document.createElement("a");
-        nextButton.href = "#";
-        nextButton.innerText = "Next";
-        nextButton.onclick = () => changePage(currentPage + 1);
-        nextButton.style.display = currentPage === totalPages ? "none" : "inline";
-        paginationDiv.appendChild(nextButton);
-    } catch (error) {
-        console.error("Error in renderPagination:", error);
-    }
-}
-
-function changePage(page) {
-    const tickets = filteredTickets !== null ? filteredTickets : loadTickets();
-    const totalPages = Math.ceil(tickets.length / ticketsPerPage);
-    if (page < 1 || page > totalPages) return;
-    currentPage = page;
-    renderTickets();
-}
-
 document.addEventListener("DOMContentLoaded", () => {
     console.log("DOM fully loaded, starting initialization...");
 
@@ -384,30 +20,6 @@ document.addEventListener("DOMContentLoaded", () => {
         // Since there's no direct input, we'll handle search via the filter popup
     } else {
         console.error('Filter link not found');
-    }
-
-    // Overlay setup
-    const overlay = document.querySelector('.overlay');
-
-    function showOverlay() {
-        if (overlay) {
-            overlay.classList.add("active");
-        }
-    }
-
-    function hideOverlay() {
-        if (overlay) {
-            overlay.classList.remove("active");
-        }
-    }
-
-    // Add click event to close modals when overlay is clicked
-    if (overlay) {
-        overlay.addEventListener('click', function (event) {
-            if (event.target === overlay) {
-                closeFilterAndSortPopUps();
-            }
-        });
     }
 
     // Sort Modal Setup
@@ -551,7 +163,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (sorterContainer) sorterContainer.innerHTML = '';
         if (sorterContainer) sorterContainer.style.display = 'none';
         if (sortCount) sortCount.textContent = '0';
-        hideOverlay();
+        filteredTickets = null;
         renderTickets();
     }
 
@@ -569,7 +181,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 closeSortModal();
             } else {
                 popup.style.display = "block";
-                showOverlay();
             }
             console.log('Sort modal display state:', popup.style.display);
         } else {
@@ -579,7 +190,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     window.togglePopup = function (event) {
         if (event) event.preventDefault();
-        window.toggleSortPopup();
+        toggleSortPopup();
     };
 
     window.closeSortModal = function () {
@@ -667,6 +278,18 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    function extractEmail(contact) {
+        if (!contact) return '';
+        const emailMatch = contact.match(/^([^\s@]+@[^\s@]+\.[^\s@]+)/);
+        return emailMatch ? emailMatch[0] : '';
+    }
+
+    function extractPhone(contact) {
+        if (!contact) return '';
+        const phoneMatch = contact.match(/\d{10}$/);
+        return phoneMatch ? phoneMatch[0] : '';
+    }
+
     // Filter Modal Setup
     const filterModal = document.getElementById('filterPopup');
     const filterCloseButton = document.querySelector('.filter-close-btn');
@@ -688,38 +311,43 @@ document.addEventListener("DOMContentLoaded", () => {
         console.log("Updated filter count:", totalFilters);
     }
 
-    //------------------------------------------------------------------------------------------
-    //CREATE FILTER ROW
     function createFilterRow() {
         if (!filterContainer) {
             console.error("filterContainer is null, cannot create filter row");
             return null;
         }
-    
+
         const filterRow = document.createElement('div');
         filterRow.className = 'filter-row';
-    
-        // Create the labels row
+
         const labelsRow = document.createElement('div');
         labelsRow.className = 'filter-labels';
-    
+
         const columnLabel = document.createElement('label');
         columnLabel.textContent = 'Column:';
-    
+        const columnField = document.createElement('div');
+        columnField.className = 'filter-field';
+        columnField.appendChild(columnLabel);
+
         const relationLabel = document.createElement('label');
         relationLabel.textContent = 'Relation:';
-    
+        const relationField = document.createElement('div');
+        relationField.className = 'filter-field';
+        relationField.appendChild(relationLabel);
+
         const valueLabel = document.createElement('label');
         valueLabel.textContent = 'Filter Value:';
-    
-        labelsRow.appendChild(columnLabel);
-        labelsRow.appendChild(relationLabel);
-        labelsRow.appendChild(valueLabel);
-    
-        // Create the inputs row
+        const valueField = document.createElement('div');
+        valueField.className = 'filter-field';
+        valueField.appendChild(valueLabel);
+
+        labelsRow.appendChild(columnField);
+        labelsRow.appendChild(relationField);
+        labelsRow.appendChild(valueField);
+
         const inputsRow = document.createElement('div');
         inputsRow.className = 'filter-inputs';
-    
+
         const columnSelect = document.createElement('select');
         columnSelect.className = 'filter-column';
         filterColumns.forEach(column => {
@@ -728,43 +356,51 @@ document.addEventListener("DOMContentLoaded", () => {
             option.textContent = column;
             columnSelect.appendChild(option);
         });
-    
+
         const relationSelect = document.createElement('select');
         relationSelect.className = 'filter-relation';
         const defaultOption = document.createElement('option');
         defaultOption.value = '';
         defaultOption.textContent = 'Select Relation';
         relationSelect.appendChild(defaultOption);
-    
+
         const valueContainer = document.createElement('div');
         valueContainer.className = 'filter-value-container';
-    
+
         const deleteButton = document.createElement('button');
         deleteButton.className = 'filter-delete-btn';
         const deleteImg = document.createElement('img');
         deleteImg.src = 'projectIcons/Filter&&SortIcons/trash-can-outline.png';
         deleteImg.alt = 'Delete';
         deleteButton.appendChild(deleteImg);
-    
-        inputsRow.appendChild(columnSelect);
-        inputsRow.appendChild(relationSelect);
-        inputsRow.appendChild(valueContainer);
+
+        inputsRow.appendChild(columnField.cloneNode(true));
+        columnField.innerHTML = '';
+        columnField.appendChild(columnSelect);
+
+        inputsRow.appendChild(relationField.cloneNode(true));
+        relationField.innerHTML = '';
+        relationField.appendChild(relationSelect);
+
+        inputsRow.appendChild(valueField.cloneNode(true));
+        valueField.innerHTML = '';
+        valueField.appendChild(valueContainer);
+
         inputsRow.appendChild(deleteButton);
-    
-        // Append labelsRow and inputsRow to filterRow in the correct order
+
         filterRow.appendChild(labelsRow);
         filterRow.appendChild(inputsRow);
-    
+
         let isColumnSet = false;
-    
+
         columnSelect.addEventListener('change', function () {
             relationSelect.innerHTML = '<option value="">Select Relation</option>';
             valueContainer.innerHTML = '';
-    
+
             const column = columnSelect.value;
             let allowedRelations = [];
             let valueInput;
-    
+
             if (['ticketid', 'subject', 'name'].includes(column)) {
                 allowedRelations = relationsEqualsOnly;
             } else if (['date'].includes(column)) {
@@ -772,14 +408,14 @@ document.addEventListener("DOMContentLoaded", () => {
             } else if (['phone', 'email'].includes(column)) {
                 allowedRelations = relationsEqualsOnly;
             }
-    
+
             allowedRelations.forEach(relation => {
                 const option = document.createElement('option');
                 option.value = relation.toLowerCase().replace(/\s/g, '');
                 option.textContent = relation;
                 relationSelect.appendChild(option);
             });
-    
+
             if (column === 'date') {
                 valueInput = document.createElement('input');
                 valueInput.type = 'date';
@@ -817,11 +453,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 valueInput.type = 'text';
                 valueInput.className = 'filter-value';
             }
-    
+
             if (valueInput) {
                 valueContainer.appendChild(valueInput);
             }
-    
+
             if (column !== 'selectcolumn' && !isColumnSet) {
                 const newFilterRow = createFilterRow();
                 if (newFilterRow) filterRow.insertAdjacentElement('afterend', newFilterRow);
@@ -829,17 +465,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 isColumnSet = true;
             }
         });
-    
+
         deleteButton.addEventListener('click', function () {
             filterRow.remove();
             updateFilterCount();
             applyFilters();
         });
-    
+
         return filterRow;
     }
-    //END OF CREATE FILTER ROW
-    //-----------------------------------------------------------------------------------------------
 
     if (addFilterButton) {
         addFilterButton.addEventListener('click', function () {
@@ -855,12 +489,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (filterSubmitButton) {
-        filterSubmitButton.addEventListener('click', function (event) {
+        filterSubmitButton.addEventListener('click', function () {
             console.log('Filter Submit clicked');
             applyFilters();
-            console.log("Filtered tickets before closeFilterModal:", filteredTickets);
             closeFilterModal();
-            console.log("Filtered tickets after closeFilterModal:", filteredTickets);
         });
     } else {
         console.error('Filter Submit button not found');
@@ -883,7 +515,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (filterModal) filterModal.style.display = 'none';
         if (filterContainer) filterContainer.innerHTML = '';
         if (filterCount) filterCount.textContent = '0';
-        hideOverlay();
+        filteredTickets = null;
         renderTickets();
     }
 
@@ -902,7 +534,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 closeFilterModal();
             } else {
                 popup.style.display = "block";
-                showOverlay();
             }
             console.log('Filter popup display state:', popup.style.display);
         } else {
@@ -923,25 +554,16 @@ document.addEventListener("DOMContentLoaded", () => {
             console.error("filterContainer is null, cannot apply filters");
             return;
         }
-
         const filters = Array.from(filterContainer.children).map(row => {
-            const columnSelect = row.querySelector('.filter-column');
-            const relationSelect = row.querySelector('.filter-relation');
-            const valueInput = row.querySelector('.filter-value');
-            const column = columnSelect ? columnSelect.value : 'selectcolumn';
-            const relation = relationSelect ? relationSelect.value : '';
-            const value = valueInput ? valueInput.value.trim() : '';
-            console.log("Filter applied:", { column, relation, value });
+            const column = row.querySelector('.filter-column').value;
+            const relation = row.querySelector('.filter-relation').value;
+            const value = row.querySelector('.filter-value') ? row.querySelector('.filter-value').value : '';
             return { column, relation, value };
         });
-
         console.log("Applying filters:", filters);
 
         let tickets = loadTickets();
-        console.log("Tickets before filtering:", tickets);
-
-        if (filters.length === 0 || filters.every(f => f.column === 'selectcolumn' || f.value === '' || f.relation === '')) {
-            console.log("No valid filters applied, resetting filteredTickets");
+        if (filters.length === 0 || filters.every(f => f.column === 'selectcolumn' || f.value === '')) {
             filteredTickets = null;
             renderTickets();
             return;
@@ -949,106 +571,55 @@ document.addEventListener("DOMContentLoaded", () => {
 
         filteredTickets = tickets.filter(ticket => {
             return filters.every(filter => {
-                if (filter.column === 'selectcolumn' || filter.value === '' || filter.relation === '') {
-                    console.log("Skipping invalid filter:", filter);
-                    return true;
-                }
+                if (filter.column === 'selectcolumn' || filter.value === '' || filter.relation === '') return true;
 
                 let ticketValue;
                 let filterValue = filter.value;
 
                 switch (filter.column) {
                     case 'ticketid':
-                        ticketValue = ticket.id !== undefined ? String(ticket.id) : '';
-                        filterValue = String(filterValue);
-                        console.log("Ticket ID comparison:", { ticketValue, filterValue });
+                        ticketValue = ticket.id.toString();
                         break;
                     case 'subject':
                         ticketValue = ticket.subject ? ticket.subject.toLowerCase() : '';
                         filterValue = filterValue.toLowerCase();
-                        console.log("Subject comparison:", { ticketValue, filterValue });
                         break;
                     case 'date':
-                        // Parse the stored date (e.g., "3/15/2025, 2:23:58 PM")
-                        if (!ticket.date) {
-                            console.warn("Ticket date is missing:", ticket);
-                            return false;
-                        }
-                        const match = ticket.date.match(/(\d+)\/(\d+)\/(\d+)/);
-                        if (!match) {
-                            console.warn("Invalid ticket date format:", ticket.date);
-                            return false;
-                        }
-                        const [_, month, day, year] = match;
-                        // Create a Date object with the parsed components, setting time to 00:00:00 to avoid timezone issues
-                        ticketValue = new Date(year, parseInt(month) - 1, day);
-                        if (isNaN(ticketValue.getTime())) {
-                            console.warn("Invalid ticket date after parsing:", ticket.date);
-                            return false;
-                        }
-
-                        // Parse the filter value (e.g., "2025-03-15")
-                        filterValue = new Date(filter.value);
-                        if (isNaN(filterValue.getTime())) {
-                            console.warn("Invalid filter date:", filter.value);
-                            return false;
-                        }
-
-                        // Normalize both dates to midnight to avoid time-based discrepancies
-                        ticketValue.setHours(0, 0, 0, 0);
-                        filterValue.setHours(0, 0, 0, 0);
-
-                        console.log("Date comparison:", {
-                            ticketValue: ticketValue.toISOString(),
-                            filterValue: filterValue.toISOString()
-                        });
+                        ticketValue = new Date(ticket.date.replace(/(\d+)\/(\d+)\/(\d+),.*$/, '$3-$1-$2'));
+                        filterValue = new Date(filterValue);
+                        if (isNaN(filterValue.getTime())) return true;
                         break;
                     case 'name':
                         ticketValue = ticket.name ? ticket.name.toLowerCase() : '';
                         filterValue = filterValue.toLowerCase();
-                        console.log("Name comparison:", { ticketValue, filterValue });
                         break;
                     case 'phone':
                         ticketValue = extractPhone(ticket.contact) || '';
-                        console.log("Phone comparison:", { ticketValue, filterValue });
                         break;
                     case 'email':
                         ticketValue = extractEmail(ticket.contact) || '';
                         filterValue = filterValue.toLowerCase();
-                        console.log("Email comparison:", { ticketValue, filterValue });
                         break;
                     default:
-                        console.warn("Unknown filter column:", filter.column);
-                        return false;
+                        return true;
                 }
 
-                if (filter.column === 'date') {
-                    if (filter.relation === 'equals') {
-                        const result = ticketValue.getTime() === filterValue.getTime();
-                        console.log("Date equals result:", result);
-                        return result;
-                    } else if (filter.relation === 'greaterthan') {
-                        const result = ticketValue.getTime() > filterValue.getTime();
-                        console.log("Date greater than result:", result);
-                        return result;
-                    } else if (filter.relation === 'lessthan') {
-                        const result = ticketValue.getTime() < filterValue.getTime();
-                        console.log("Date less than result:", result);
-                        return result;
+                if (filter.relation === 'equals') {
+                    if (filter.column === 'date') {
+                        return ticketValue.toISOString().split('T')[0] === filterValue.toISOString().split('T')[0];
                     }
-                    console.warn("Unhandled date filter relation:", filter.relation);
-                    return false;
-                } else if (filter.relation === 'equals') {
-                    const result = ticketValue === filterValue;
-                    console.log("Equals comparison result:", result);
-                    return result;
+                    return ticketValue === filterValue;
+                } else if (filter.column === 'date') {
+                    if (filter.relation === 'greaterthan') {
+                        return ticketValue > filterValue;
+                    } else if (filter.relation === 'lessthan') {
+                        return ticketValue < filterValue;
+                    }
                 }
-                console.warn("Unhandled filter relation for non-date column:", filter.relation);
-                return false;
+                return true;
             });
         });
 
-        console.log("Filtered tickets:", filteredTickets);
         renderTickets();
     }
 
@@ -1058,26 +629,264 @@ document.addEventListener("DOMContentLoaded", () => {
         renderTickets();
     }
 
+    function loadTickets() {
+        const storedTickets = localStorage.getItem("formSubmissions");
+        const tickets = storedTickets ? JSON.parse(storedTickets) : [];
+        console.log("Raw loaded tickets:", tickets);
+        return tickets;
+    }
+
+    function saveTickets(tickets) {
+        localStorage.setItem("formSubmissions", JSON.stringify(tickets));
+        console.log("Tickets saved to localStorage:", tickets);
+    }
+
+    function showTicketInfo(ticketId) {
+        try {
+            const tickets = loadTickets();
+            const ticket = tickets.find(t => t.id === ticketId);
+            if (!ticket) {
+                alert("Ticket not found.");
+                return;
+            }
+            const ticketInfo = document.getElementById("ticketInfo");
+            if (ticketInfo) {
+                ticketInfo.innerHTML = `
+                    <strong>Ticket ID:</strong> ${ticket.id}<br>
+                    <strong>Name:</strong> ${ticket.name || 'N/A'}<br>
+                    <strong>Contact:</strong> ${ticket.contact || 'N/A'}<br>
+                    <strong>Subject:</strong> ${ticket.subject || 'N/A'}<br>
+                    <strong>Details:</strong> ${ticket.details || 'N/A'}<br>
+                    <strong>Date:</strong> ${ticket.date || 'N/A'}
+                `;
+            }
+            const ticketImage = document.getElementById("ticketImage");
+            if (ticketImage) {
+                if (ticket.file && ticket.file.data) {
+                    ticketImage.src = ticket.file.data;
+                    ticketImage.style.display = "block";
+                } else {
+                    ticketImage.style.display = "none";
+                }
+            }
+            const ticketModal = document.getElementById("ticketModal");
+            if (ticketModal) ticketModal.style.display = "block";
+        } catch (error) {
+            console.error("Error in showTicketInfo:", error);
+        }
+    }
+
+    function closeModal() {
+        const ticketModal = document.getElementById("ticketModal");
+        if (ticketModal) ticketModal.style.display = "none";
+    }
+
+    function downloadAttachment(ticketId) {
+        try {
+            const tickets = loadTickets();
+            const ticket = tickets.find(t => t.id === ticketId);
+            if (!ticket || !ticket.file) {
+                alert("No attachment found");
+                return;
+            }
+            const link = document.createElement("a");
+            link.href = ticket.file.data;
+            link.download = ticket.file.name || `attachment_${ticketId}`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (error) {
+            console.error("Error in downloadAttachment:", error);
+        }
+    }
+
+    function deleteTicket(id) {
+        try {
+            let tickets = loadTickets();
+            tickets = tickets.filter(ticket => ticket.id !== id);
+            saveTickets(tickets);
+            filteredTickets = null;
+            renderTickets();
+        } catch (error) {
+            console.error("Error in deleteTicket:", error);
+        }
+    }
+
+    let currentEditingTicketId = null;
+
+    function openEditModal(ticketId) {
+        try {
+            const tickets = loadTickets();
+            const ticket = tickets.find(t => t.id === ticketId);
+            if (!ticket) {
+                alert("Ticket not found.");
+                return;
+            }
+            const editName = document.getElementById("editName");
+            const editContact = document.getElementById("editContact");
+            const editSubject = document.getElementById("editSubject");
+            const editDetails = document.getElementById("editDetails");
+            if (editName) editName.value = ticket.name || '';
+            if (editContact) editContact.value = ticket.contact || '';
+            if (editSubject) editSubject.value = ticket.subject || '';
+            if (editDetails) editDetails.value = ticket.details || '';
+            currentEditingTicketId = ticketId;
+            const editModal = document.getElementById("editTicketModal");
+            if (editModal) editModal.style.display = "block";
+            else console.error("editTicketModal not found");
+        } catch (error) {
+            console.error("Error in openEditModal:", error);
+        }
+    }
+
+    function saveEditedTicket() {
+        try {
+            if (currentEditingTicketId === null) return;
+            let tickets = loadTickets();
+            let ticket = tickets.find(t => t.id === currentEditingTicketId);
+            if (!ticket) return;
+            const newName = document.getElementById("editName").value.trim();
+            const newContact = document.getElementById("editContact").value.trim();
+            const newSubject = document.getElementById("editSubject").value;
+            const newDetails = document.getElementById("editDetails").value.trim();
+            if (newName !== ticket.name) ticket.name = newName;
+            if (newContact !== ticket.contact) ticket.contact = newContact;
+            if (newSubject !== ticket.subject) ticket.subject = newSubject;
+            if (newDetails !== ticket.details) ticket.details = newDetails;
+            saveTickets(tickets);
+            filteredTickets = null;
+            renderTickets();
+            closeEditModal();
+        } catch (error) {
+            console.error("Error in saveEditedTicket:", error);
+        }
+    }
+
+    function closeEditModal() {
+        const editModal = document.getElementById("editTicketModal");
+        if (editModal) editModal.style.display = "none";
+        currentEditingTicketId = null;
+    }
+
+    let currentPage = 1;
+    const ticketsPerPage = 3;
+
+    function renderTickets() {
+        try {
+            const tickets = filteredTickets !== null ? filteredTickets : loadTickets();
+            console.log("Rendering tickets:", tickets);
+            const tableBody = document.getElementById("ticketTableBody");
+            if (!tableBody) {
+                console.error("ticketTableBody not found");
+                return;
+            }
+            tableBody.innerHTML = "";
+
+            if (tickets.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center;">${filteredTickets !== null ? "No matching tickets found" : "No tickets available"}</td></tr>`;
+                const paginationDiv = document.getElementById("pagination");
+                if (paginationDiv) paginationDiv.style.display = 'none';
+                return;
+            }
+
+            const paginationDiv = document.getElementById("pagination");
+            if (paginationDiv) paginationDiv.style.display = 'flex';
+
+            const start = (currentPage - 1) * ticketsPerPage;
+            const end = start + ticketsPerPage;
+            const paginatedTickets = tickets.slice(start, end);
+
+            paginatedTickets.forEach(ticket => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${ticket.id || 'N/A'}</td>
+                    <td>${(ticket.name || 'N/A') + '<br>' + (ticket.contact || 'N/A')}</td>
+                    <td>${(ticket.subject || 'N/A') + '<br>' + (ticket.details || 'N/A')}</td>
+                    <td>${ticket.date || 'N/A'}</td>
+                    <td>
+                        <button title="Show popup with more information" onclick="showTicketInfo(${ticket.id || 0})">
+                            <img src="projectIcons/information.png" alt="More Info" width="16" height="16">
+                        </button>
+                        <button title="Download ticket attachment" onclick="downloadAttachment(${ticket.id || 0})">
+                            <img src="projectIcons/download.png" alt="Download" width="16" height="16">
+                        </button>
+                        <button title="Trigger call if preferred contact is phone" onclick="alert('Calling ${extractPhone(ticket.contact) || 'No phone'}')">
+                            <img src="projectIcons/phone.png" alt="Call" width="16" height="16">
+                        </button>
+                        <button title="Trigger call if preferred contact is email" onclick="alert('Emailing ${extractEmail(ticket.contact) || 'No email'}')">
+                            <img src="projectIcons/email.png" alt="Email" width="16" height="16">
+                        </button>
+                        <button title="Edit on a pop-up the details of the ticket" onclick="openEditModal(${ticket.id || 0})">
+                            <img src="projectIcons/edit.png" alt="Edit" width="16" height="16">
+                        </button>
+                        <button title="Delete the ticket" onclick="deleteTicket(${ticket.id || 0})">
+                            <img src="projectIcons/trash-can.png" alt="Delete" width="16" height="16">
+                        </button>
+                    </td>`;
+                tableBody.appendChild(row);
+            });
+            renderPagination();
+        } catch (error) {
+            console.error("Error in renderTickets:", error);
+        }
+    }
+
+    function renderPagination() {
+        try {
+            const tickets = filteredTickets !== null ? filteredTickets : loadTickets();
+            const paginationDiv = document.getElementById("pagination");
+            if (!paginationDiv) {
+                console.error("pagination div not found");
+                return;
+            }
+            paginationDiv.innerHTML = "";
+
+            const totalPages = Math.ceil(tickets.length / ticketsPerPage);
+            if (totalPages <= 1) {
+                paginationDiv.style.display = 'none';
+                return;
+            }
+
+            const prevButton = document.createElement("a");
+            prevButton.href = "#";
+            prevButton.innerText = "Previous";
+            prevButton.onclick = () => changePage(currentPage - 1);
+            prevButton.style.display = currentPage === 1 ? "none" : "inline";
+            paginationDiv.appendChild(prevButton);
+
+            for (let i = 1; i <= totalPages; i++) {
+                const pageLink = document.createElement("a");
+                pageLink.href = "#";
+                pageLink.innerText = i;
+                pageLink.classList.add("page-link");
+                if (i === currentPage) pageLink.classList.add("active");
+                pageLink.onclick = () => changePage(i);
+                paginationDiv.appendChild(pageLink);
+            }
+
+            const nextButton = document.createElement("a");
+            nextButton.href = "#";
+            nextButton.innerText = "Next";
+            nextButton.onclick = () => changePage(currentPage + 1);
+            nextButton.style.display = currentPage === totalPages ? "none" : "inline";
+            paginationDiv.appendChild(nextButton);
+        } catch (error) {
+            console.error("Error in renderPagination:", error);
+        }
+    }
+
+    function changePage(page) {
+        const tickets = filteredTickets !== null ? filteredTickets : loadTickets();
+        const totalPages = Math.ceil(tickets.length / ticketsPerPage);
+        if (page < 1 || page > totalPages) return;
+        currentPage = page;
+        renderTickets();
+    }
+
     window.removeSortFilter = function () {
         console.log('Removing sort filter');
         filteredTickets = null;
         renderTickets();
-    };
-
-    // New functionality to close all popups with a single function
-    const closeFilterAndSortButtons = document.querySelectorAll('.close-btn');
-
-    function closeFilterAndSortPopUps() {
-        closeFilterModal();
-        closeSortModal();
-        closeModal();
-        window.closeEditModal();
-        hideOverlay();
-        filteredTickets = null;
-        renderTickets();
     }
-
-    closeFilterAndSortButtons.forEach(button => {
-        button.addEventListener('click', closeFilterAndSortPopUps);
-    });
 });
+

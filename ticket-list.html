@@ -9,7 +9,7 @@
 <body>
     <nav>
         <a href="raise-ticket.html" class="logo">
-            <img src="projectIcons/ticket.png" alt="Tatua Logo" width="40" height="40">
+            <img src="projectIcons/Ticket.png" alt="Tatua Logo" width="40" height="40">
             <span>Tatua</span>
         </a>
         <ul class="nav-links">
@@ -18,17 +18,45 @@
         </ul>
     </nav>
 
-    <div class="container">
-        <!-- <h2>Tickets List</h2> -->
 
+
+    <!-- TOOL BAR -->
+    <div id="toolBar">
+        <!-- SORTING -->
+        <div id="sort">
+            <span class="filter-chip">
+                <span><span id="sort-count">0</span>
+                <a href="#" onclick="togglePopup()" id="sort-id">Sort</a>
+            </span>
+                <button class="close-btn" onclick="removeSortFilter()">
+                    <img src="projectIcons/close.png" alt="Cancel">
+                </button>
+            </span>
+        </div>
+    
+        <!-- FILTERING -->
+        <div id="filter">
+            <span class="filter-chip">
+                <span><span id="filter-count">0</span>
+                    <a href="#" onclick="toggleFilterPopup()">Filter</a>
+                </span>
+                <button class="close-btn" onclick="removeFilter()">
+                    <img src="projectIcons/close.png" alt="Cancel">
+                </button>
+            </span>
+        </div>
+    
         <!-- Refresh Button -->
-        <div class="refresh">
-            <button onclick="refreshTickets()">
-                <img src="projectIcons/refresh.png" alt="Refresh" title="Reload Tickets" width="24" height="24">
-                Refresh
+        <div class="tool" id="refresh">
+            <button onclick="refreshTickets()" class="refreshbutton">
+                <img src="projectIcons/Refresh.png" alt="Refresh" title="Reload Tickets" width="16" height="16">
+                <span><strong>Refresh</strong></span>
             </button>
         </div>
+    </div>
 
+        <!-- TABLE -->
+        
         <table>
             <thead>
                 <tr>
@@ -40,12 +68,134 @@
                 </tr>
             </thead>
             
+            
             <tbody id="ticketTableBody">
                 
                 <!-- Rows will be dynamically inserted here -->
             </tbody>
         </table>
+
+
+    <div class="pagination" id="pagination"> 
+		<a href="#" id="prev">Previous</a> 
+		<a href="#" class="page-link" data-page="1">1</a> 
+		<a href="#" class="page-link" data-page="2">2</a> 
+		<a href="#" class="page-link" data-page="3">3</a> 
+		<a href="#" id="next">Next</a> 
+		<p id="page-numbers"> </p> 
+	</div> 
+
+    <!-- Rendering image function -->
+    <div id="ticketModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h3>Ticket Details</h3>
+            <p id="ticketInfo"></p>
+            <img id="ticketImage" src="" alt="Attached Image" style="max-width: 40%; display: none;">
+        </div>
     </div>
+
+    <!-- Modal for editing ticket details -->
+    <div id="editTicketModal" class="modal1" style="display: none;">
+        <div class="modal-content1">
+            <span class="close1" onclick="closeEditModal()">&times;</span>
+            <h2>Edit Ticket</h2>
+    
+            <div>
+            <label for="editName">Name:</label>
+            <input type="text" id="editName">
+        </div>
+    
+        <div>
+            <label for="editContact">Contact (Phone or Email):</label>
+            <input type="text" id="editContact">
+        </div>
+    
+        <div>
+            <label for="editSubject">Subject:</label>
+            <select id="editSubject">
+                <option value=""></option>
+                <option value="server-downtime">Server Downtime</option>
+                <option value="wifi-not-working">WiFi not working</option>
+                <option value="vpn-connection-issues">VPN Connections Issues</option>
+                <option value="hardware-upgrade-request">Hardware Upgrade Request</option>
+                <option value="unauthorised-access">Unauthorised Access</option>
+                <option value="email-phishing">Phishing or Suspicious Email</option>
+                <option value="compliance-violation">Compliance Violation</option>
+                <option value="outlook-not-syncing">Outlook Not Syncing</option>
+                <option value="training-request">Training Request</option>
+            </select>
+        </div>
+    
+        <div>
+            <label for="editDetails">Details</label>
+            <textarea name="" id="editDetails"></textarea>
+        </div>
+    
+            <button onclick="saveEditedticket()">Save Changes</button>
+            <button onclick="closeEditModal()">Cancel</button>
+        </div>
+    </div>
+
+
+
+    </div>
+<!-- ----------------------------------------------------------------------- -->
+
+    <!-- Sort PopUp -->
+    <div class="overlay"></div>
+    <div class="sort_modal" id="sort_modal">
+        <div class="sort-modal-header">
+            <span class="icon sort-icon"><img src="projectIcons/Filter&&SortIcons/filter-variant.png" alt="Sort"></span>
+            <span class="sort-modal-title">Sort Table</span>
+            <button class="close-icon" id="close-icon" onclick="closeSortModal()"><img src="projectIcons/Filter&&SortIcons/close-circle-outline.png" alt="Close"></button>
+        </div>
+        
+        <div class="sorter-container" id="sorter-container"></div>
+
+        <div class="sort-modal-body">
+            <button class="add-sorter">
+                <img src="projectIcons/Filter&&SortIcons/plus.png" alt="Add Icon">
+                <span>Add Sorter</span>
+            </button>
+        </div>
+        <div class="sort-modal-footer">
+            <button class="sort-reset-btn">Reset Sorting</button>
+            <button class="sort-submit-btn">Submit</button>
+        </div>
+    </div>
+<!-- ---------------------------------------------------------------------------------->
+
+<!-- FILTER POPUP -->
+
+<div class="pop_up" id="filterPopup">
+    <div class="filter-popup-header">
+        <div class="filter-left-section">
+            <span class="ico-n filter-icon"><img src="projectIcons/Filter&&SortIcons/filter-icon.png" alt="Filter"></span>
+            <span>Filter Table</span>
+        </div>
+        <button class="filter-close-btn">
+            <img src="projectIcons/Filter&&SortIcons/close-circle-outline.png" alt="Close">
+        </button>
+    </div>
+    <div class="filter-body">
+        <div class="filter-rows-container" id="filter-rows-container">
+        </div>
+        <button class="filter-add-btn">
+            <img src="projectIcons/Filter&&SortIcons/Filter_Icon.png" alt="Add">
+            Add Filter
+        </button>
+    </div>
+    <div class="filter-footer">
+        <button class="filter-reset-btn">Reset Filter</button>
+        <button class="filter-submit-btn">Submit</button>
+    </div>
+    
+</div>
+
+
+<!--------------------------------------------------------------------------------------->
+    
 
     <script src="ticket-list.js"></script>
 </body>
